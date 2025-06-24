@@ -102,7 +102,7 @@ local function createAimbotGUI()
             callback(default)
         end
 
-        SliderButton.MouseButton1Click:Connect(function()
+        SliderButton.MouseButton1Down:Connect(function()
             local connection
             connection = RunService.RenderStepped:Connect(function()
                 if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
