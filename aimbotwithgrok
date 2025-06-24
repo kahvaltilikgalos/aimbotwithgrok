@@ -12,8 +12,8 @@ local function createAimbotGUI()
     ScreenGui.Enabled = false
 
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(0, 250, 0, 450)
-    Frame.Position = UDim2.new(0.02, 0, 0.2, 0)
+    Frame.Size = UDim2.new(0, 250, 0, 600) -- Yükseklik artırıldı, yeni butonlar için
+    Frame.Position = UDim2.new(0.75, 0, 0.3, 0) -- Sağ tarafa kaydırıldı
     Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     Frame.BorderSizePixel = 0
     local Corner = Instance.new("UICorner")
@@ -102,7 +102,7 @@ local function createAimbotGUI()
             callback(default)
         end
 
-        SliderButton.MouseButton1Down:Connect(function()
+        SliderButton.MouseButton1Click:Connect(function()
             local connection
             connection = RunService.RenderStepped:Connect(function()
                 if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
@@ -136,7 +136,8 @@ local function createAimbotGUI()
         AliveCheck = true,
         TracerEnabled = false,
         FOVRadius = 90,
-        Smoothness = 0 -- Varsayılan olarak anında kilitlenme
+        Smoothness = 0,
+        AimPart = "Head"
     }
 
     settings.AimbotEnabled = createToggle("Aimbot", 40, false, function(value) settings.AimbotEnabled = value end)
@@ -145,7 +146,41 @@ local function createAimbotGUI()
     settings.AliveCheck = createToggle("Alive Check", 160, true, function(value) settings.AliveCheck = value end)
     settings.TracerEnabled = createToggle("Tracers", 200, false, function(value) settings.TracerEnabled = value end)
     settings.FOVRadius = createSlider("FOV Radius", 240, 50, 300, 90, function(value) settings.FOVRadius = value end)
-    settings.Smoothness = createSlider("Smoothness", 300, 0, 1, 0, function(value) settings.Smoothness = value end) -- 0-1 aralığı
+    settings.Smoothness = createSlider("Smoothness", 300, 0, 1, 0, function(value) settings.Smoothness = value end)
+
+    local function createTargetToggle(name, yPos, default, partName)
+        local ToggleButton = Instance.new("TextButton")
+        ToggleButton.Size = UDim2.new(0.9, 0, 0, 30)
+        ToggleButton.Position = UDim2.new(0.05, 0, 0, yPos)
+        ToggleButton.BackgroundColor3 = default and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(100, 100, 100)
+        ToggleButton.Text = name
+        ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ToggleButton.TextSize = 14
+        ToggleButton.Font = Enum.Font.Gotham
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 5)
+        Corner.Parent = ToggleButton
+        ToggleButton.Parent = Frame
+
+        ToggleButton.MouseButton1Click:Connect(function()
+            settings.AimPart = partName
+            for _, btn in pairs(Frame:GetChildren()) do
+                if btn:IsA("TextButton") and (btn.Text == "Head" or btn.Text == "Body" or btn.Text == "LeftFoot" or btn.Text == "RightFoot") and btn ~= ToggleButton then
+                    btn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+                end
+            end
+            ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        end)
+        if default then
+            ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        end
+        return default
+    end
+
+    createTargetToggle("Head", 360, true, "Head")
+    createTargetToggle("Body", 400, false, "UpperTorso")
+    createTargetToggle("LeftFoot", 440, false, "LeftFoot")
+    createTargetToggle("RightFoot", 480, false, "RightFoot")
 
     local CloseButton = Instance.new("TextButton")
     CloseButton.Size = UDim2.new(0, 30, 0, 30)
@@ -175,7 +210,7 @@ local function createCheatGUI()
 
     local Frame = Instance.new("Frame")
     Frame.Size = UDim2.new(0, 250, 0, 350)
-    Frame.Position = UDim2.new(0.02, 0, 0.2, 0)
+    Frame.Position = UDim2.new(0.02, 0, 0.4, 0) -- Sol tarafta aşağı kaydırıldı
     Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     Frame.BorderSizePixel = 0
     local Corner = Instance.new("UICorner")
@@ -304,14 +339,18 @@ local function createCheatGUI()
         cheatSettings.JumpPowerEnabled = value
     end)
     cheatSettings.JumpPower = createSlider("Jump Power", 80, 50, 200, 50, function(value)
-        cheatSettings.JumpPower = value
+        if cheatSettings.JumpPowerEnabled then
+            cheatSettings.JumpPower = value
+        end
     end)
 
     cheatSettings.SpeedEnabled = createToggle("Speed", 140, false, function(value)
         cheatSettings.SpeedEnabled = value
     end)
     cheatSettings.WalkSpeed = createSlider("Walk Speed", 180, 16, 100, 16, function(value)
-        cheatSettings.WalkSpeed = value
+        if cheatSettings.SpeedEnabled then
+            cheatSettings.WalkSpeed = value
+        end
     end)
 
     cheatSettings.NoclipEnabled = createToggle("Noclip", 240, false, function(value)
@@ -384,19 +423,18 @@ local CheatSettings, CheatGui = createCheatGUI()
 local AimPart = "Head"
 local Holding = false
 
+local originalWalkSpeed = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and LocalPlayer.Character.Humanoid.WalkSpeed or 16
+local originalJumpPower = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and LocalPlayer.Character.Humanoid.JumpPower or 50
+
 RunService.RenderStepped:Connect(function()
     local character = LocalPlayer.Character
     if character and character:FindFirstChild("Humanoid") then
         local humanoid = character.Humanoid
         if CheatSettings.JumpPowerEnabled then
             humanoid.JumpPower = CheatSettings.JumpPower
-        else
-            humanoid.JumpPower = 50
         end
         if CheatSettings.SpeedEnabled then
             humanoid.WalkSpeed = CheatSettings.WalkSpeed
-        else
-            humanoid.WalkSpeed = 16
         end
     end
 end)
@@ -417,7 +455,7 @@ local function GetClosestPlayer()
     local mousePos = UserInputService:GetMouseLocation()
 
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(AimPart) then
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(Settings.AimPart) then
             local humanoid = player.Character:FindFirstChild("Humanoid")
             if Settings.AliveCheck and humanoid and humanoid.Health <= 0 then
                 continue
@@ -426,7 +464,7 @@ local function GetClosestPlayer()
                 continue
             end
 
-            local partPos = player.Character[AimPart].Position
+            local partPos = player.Character[Settings.AimPart].Position
             local screenPos, onScreen = Camera:WorldToViewportPoint(partPos)
             if onScreen then
                 local distance = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(screenPos.X, screenPos.Y)).Magnitude
@@ -444,8 +482,8 @@ end
 RunService.RenderStepped:Connect(function()
     if Settings.AimbotEnabled and Holding then
         local target = GetClosestPlayer()
-        if target and target.Character and target.Character:FindFirstChild(AimPart) then
-            local targetPos = target.Character[AimPart].Position
+        if target and target.Character and target.Character:FindFirstChild(Settings.AimPart) then
+            local targetPos = target.Character[Settings.AimPart].Position
             if Settings.Smoothness > 0.05 then
                 local TweenService = game:GetService("TweenService")
                 local tweenInfo = TweenInfo.new(Settings.Smoothness, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
@@ -544,9 +582,3 @@ UserInputService.InputEnded:Connect(function(input)
         Holding = false
     end
 end)
-
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Cheats Loaded",
-    Text = "Right-click to aim. Press U for Aimbot GUI, K for Cheat GUI.",
-    Duration = 5
-})
